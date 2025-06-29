@@ -1,4 +1,43 @@
-<!DOCTYPE html>
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,15 +47,75 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            /* Black and grey linear gradient background */
+            background: linear-gradient(135deg, #1c1c1c, #3c3c3c, #2c2c2c, #4a4a4a);
+            background-attachment: fixed;
+            color: #e0e0e0;
+        }
+
+        /* Stars Pattern Background */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .stars::before {
+            content: '';
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            box-shadow: 
+                50vw 10vh white, 20vw 80vh white, 70vw 30vh white,
+                30vw 50vh white, 90vw 20vh white, 10vw 60vh white,
+                60vw 90vh white, 40vw 40vh white, 80vw 70vh white;
+            animation: twinkle 2s infinite alternate;
+        }
+
+        @keyframes twinkle {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .container {
             text-align: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #ffd700;
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        /* Comillas Negras (Black Quotes) Effect */
+        h1::before, h1::after {
+            content: '"';
+            font-size: 3rem;
+            color: #000;
+            position: absolute;
+            font-family: 'Georgia', serif;
+        }
+
+        h1::before {
+            top: -0.5rem;
+            left: -1.5rem;
+        }
+
+        h1::after {
+            bottom: -0.5rem;
+            right: -1.5rem;
         }
 
         #board {
@@ -29,33 +128,62 @@
         .cell {
             width: 100px;
             height: 100px;
-            background: #fff;
-            border: 2px solid #333;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #e0e0e0;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 40px;
+            color: #ffd700;
             cursor: pointer;
+            transition: background 0.3s;
         }
 
         .cell:hover {
-            background: #f5f5f5;
+            background: rgba(255, 255, 255, 0.2);
         }
 
         #message {
             font-size: 24px;
             margin: 20px 0;
+            color: #e0e0e0;
         }
 
         button {
             padding: 10px 20px;
             font-size: 16px;
+            background-color: #1c1c1c;
+            color: #e0e0e0;
+            border: 2px solid #ffd700;
+            border-radius: 5px;
             cursor: pointer;
             margin: 5px;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #3c3c3c;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            h1::before, h1::after {
+                font-size: 2.5rem;
+            }
+
+            .cell {
+                width: 80px;
+                height: 80px;
+                font-size: 32px;
+            }
         }
     </style>
 </head>
 <body>
+    <div class="stars"></div>
     <div class="container">
         <h1>Tic-Tac-Toe</h1>
         <div id="board">
